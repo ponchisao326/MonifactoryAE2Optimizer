@@ -18,7 +18,7 @@ public final class CpuProgressTracker {
         }
         ProgressMark previous = marks.get(view.cpu());
         if (shouldResetMark(previous, view)) {
-            marks.put(view.cpu(), new ProgressMark(view.remainingItemCount(), tick));
+            marks.put(view.cpu(), new ProgressMark(view.waitingForTotal(), tick));
         }
     }
 
@@ -35,9 +35,9 @@ public final class CpuProgressTracker {
     }
 
     private boolean shouldResetMark(ProgressMark previous, CraftingCpuView view) {
-        return previous == null || previous.remainingItemCount() != view.remainingItemCount();
+        return previous == null || previous.waitingForTotal() != view.waitingForTotal();
     }
 
-    private record ProgressMark(long remainingItemCount, long tick) {
+    private record ProgressMark(long waitingForTotal, long tick) {
     }
 }

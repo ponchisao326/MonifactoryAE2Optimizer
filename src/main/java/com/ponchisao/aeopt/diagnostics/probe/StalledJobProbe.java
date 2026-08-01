@@ -11,6 +11,8 @@ import java.util.List;
 
 public final class StalledJobProbe implements DiagnosticProbe {
 
+    private static final double TICKS_PER_MINUTE = 1200.0D;
+
     @Override
     public String id() {
         return "stalled_job";
@@ -34,12 +36,19 @@ public final class StalledJobProbe implements DiagnosticProbe {
     }
 
     private String describe(CraftingCpuView view, long idleTicks) {
-        return String.format(
-                "CPU '%s' has made no progress for %d ticks (%.1f min) with %d items still pending, crafting %s.",
-                view.name(),
-                idleTicks,
-                idleTicks / 1200.0D,
-                view.remainingItemCount(),
-                view.jobOutput());
+        return String.format("CPU at %s stalled for %.1f min while crafting %s. %s",
+                view.position(),
+                idleTicks / TICKS_PER_MINUTE,
+                view.jobOutput(),
+                describeCause(view));
+    }
+
+    private String describeCause(CraftingCpuView view) {
+        if (view.isWaitingForMachineOutput()) {
+            return "Waiting for " + view.describeWaitedItems()
+                    + ". A machine took the ingredients and never returned that exact output.";
+        }
+        return "Nothing is pending return, so a pattern could not be pushed: "
+                + "no provider accepted it, or an ingredient is missing.";
     }
 }
