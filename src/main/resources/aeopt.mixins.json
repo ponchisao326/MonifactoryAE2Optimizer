@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.ponchisao.aeopt.mixin",
+  "plugin": "com.ponchisao.aeopt.mixin.AeOptMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "aeopt.refmap.json",
+  "mixins": [
+    "CraftingCpuLogicAccessor",
+    "CraftingServiceMixin",
+    "PatternProviderLogicAccessor"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
