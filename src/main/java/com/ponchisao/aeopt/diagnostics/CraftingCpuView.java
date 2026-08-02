@@ -19,6 +19,7 @@ public record CraftingCpuView(ICraftingCPU cpu,
                               int totalBlockedTasks) {
 
     private static final int MAX_REPORTED_ITEMS = 4;
+    private static final int MAX_REPORTED_PATTERNS = 6;
     private static final String NOTHING = "nothing";
 
     public boolean isIdleWhileHavingWork() {
@@ -34,11 +35,12 @@ public record CraftingCpuView(ICraftingCPU cpu,
                 && waitingFor.isEmpty()
                 && patternsPushedThisTick == 0
                 && !blockedPatterns.isEmpty()
+                && analyzedEveryStep()
                 && blockedPatterns.stream().allMatch(BlockedPattern::isMissingIngredient);
     }
 
     public boolean hasHiddenBlockedTasks() {
-        return totalBlockedTasks > blockedPatterns.size();
+        return totalBlockedTasks > reportedPatternCount();
     }
 
     public boolean hasBlockedPatterns() {
@@ -71,7 +73,16 @@ public record CraftingCpuView(ICraftingCPU cpu,
 
     public String describeBlockedPatterns() {
         return blockedPatterns.stream()
+                .limit(MAX_REPORTED_PATTERNS)
                 .map(BlockedPattern::describe)
                 .collect(Collectors.joining(" | "));
+    }
+
+    public int reportedPatternCount() {
+        return Math.min(blockedPatterns.size(), MAX_REPORTED_PATTERNS);
+    }
+
+    public boolean analyzedEveryStep() {
+        return blockedPatterns.size() >= totalBlockedTasks;
     }
 }

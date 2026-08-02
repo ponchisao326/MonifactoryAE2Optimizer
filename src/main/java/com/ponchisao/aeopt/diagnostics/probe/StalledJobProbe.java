@@ -63,7 +63,7 @@ public final class StalledJobProbe implements DiagnosticProbe {
 
     private String describeBlockedSteps(CraftingCpuView view) {
         String prefix = view.hasHiddenBlockedTasks()
-                ? "Blocked on " + view.blockedPatterns().size() + " of " + view.totalBlockedTasks() + " steps: "
+                ? "Blocked on " + view.reportedPatternCount() + " of " + view.totalBlockedTasks() + " steps: "
                 : "Blocked on: ";
         return prefix + view.describeBlockedPatterns();
     }

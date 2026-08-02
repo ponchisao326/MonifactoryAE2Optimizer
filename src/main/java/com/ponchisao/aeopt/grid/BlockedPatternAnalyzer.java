@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 public final class BlockedPatternAnalyzer {
 
-    private static final int MAX_REPORTED_PATTERNS = 6;
+    private static final int MAX_ANALYZED_PATTERNS = 256;
     private static final int MAX_REPORTED_LOCATIONS = 3;
     private static final String UNKNOWN_LOCATION = "unknown";
 
@@ -45,7 +45,7 @@ public final class BlockedPatternAnalyzer {
             }
             blocked.add(inspectPattern(grid, logic.getInventory(), producibleKeys,
                     task.getKey(), task.getValue().value));
-            if (blocked.size() >= MAX_REPORTED_PATTERNS) {
+            if (blocked.size() >= MAX_ANALYZED_PATTERNS) {
                 break;
             }
         }
