@@ -119,7 +119,8 @@ public final class NetworkInspector {
                 describeJobOutput(status),
                 waitingFor,
                 readStoredItems(cpu, potentiallyStalled),
-                readBlockedPatterns(grid, cpu, potentiallyStalled));
+                readBlockedPatterns(grid, cpu, potentiallyStalled),
+                countBlockedTasks(cpu, potentiallyStalled));
     }
 
     private static List<ItemAmount> readStoredItems(ICraftingCPU cpu, boolean potentiallyStalled) {
@@ -148,6 +149,14 @@ public final class NetworkInspector {
             return List.of();
         }
         return BlockedPatternAnalyzer.analyze(grid, logic);
+    }
+
+    private static int countBlockedTasks(ICraftingCPU cpu, boolean potentiallyStalled) {
+        CraftingCpuLogic logic = readCraftingLogic(cpu);
+        if (!potentiallyStalled || logic == null) {
+            return 0;
+        }
+        return BlockedPatternAnalyzer.countBlockedTasks(logic);
     }
 
     private static boolean isPotentiallyStalled(boolean hasJob, int patternsPushed) {

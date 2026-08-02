@@ -6,7 +6,8 @@ public record BlockedPattern(String output,
                              int busyProviderCount,
                              String providerLocations,
                              String missingIngredient,
-                             boolean missingIngredientProducedByJob) {
+                             boolean missingIngredientProducedByJob,
+                             String refusalReason) {
 
     public boolean hasNoProvider() {
         return providerCount == 0;
@@ -44,7 +45,6 @@ public record BlockedPattern(String output,
         if (isMissingIngredient()) {
             return "waiting on " + missingIngredient + ", which an earlier step of this job still has to make";
         }
-        return providerCount + " provider(s) at " + providerLocations
-                + " have the ingredients but refused the push (blocking mode, or a locked crafting provider)";
+        return providerCount + " provider(s) at " + providerLocations + " refused the push: " + refusalReason;
     }
 }

@@ -1,6 +1,7 @@
 package com.ponchisao.aeopt.grid;
 
 import appeng.api.config.Actionable;
+import appeng.api.config.LockCraftingMode;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingProvider;
@@ -83,6 +84,20 @@ public final class BlockedPatternAnalyzer {
         return keys;
     }
 
+    public static int countBlockedTasks(CraftingCpuLogic logic) {
+        ExecutingCraftingJob job = logic.getJob();
+        if (job == null) {
+            return 0;
+        }
+        int total = 0;
+        for (Map.Entry<IPatternDetails, ExecutingCraftingJob.TaskProgress> task : job.getTasks().entrySet()) {
+            if (hasRemainingRuns(task.getValue().value)) {
+                total++;
+            }
+        }
+        return total;
+    }
+
     private static boolean hasRemainingRuns(long remainingRuns) {
         return remainingRuns > 0L;
     }
@@ -101,7 +116,40 @@ public final class BlockedPatternAnalyzer {
                 countStuckProviders(providers),
                 describeLocations(providers),
                 missing == null ? null : missing.description(),
-                missing != null && producibleKeys.contains(missing.key()));
+                missing != null && producibleKeys.contains(missing.key()),
+                describeRefusal(providers));
+    }
+
+    private static String describeRefusal(List<ICraftingProvider> providers) {
+        if (findLockedProvider(providers) != null) {
+            return "the provider is locked, waiting for its unlock event ("
+                    + findLockedProvider(providers) + ")";
+        }
+        if (hasBlockingProvider(providers)) {
+            return "blocking mode is on and the machine still holds inputs from the previous batch, "
+                    + "so nothing new can be sent until it drains";
+        }
+        return "the machine cannot accept the inputs - a full hatch, or the pattern asks for more "
+                + "than one hatch can hold";
+    }
+
+    private static LockCraftingMode findLockedProvider(List<ICraftingProvider> providers) {
+        for (ICraftingProvider provider : providers) {
+            if (provider instanceof PatternProviderLogic logic
+                    && logic.getCraftingLockedReason() != LockCraftingMode.NONE) {
+                return logic.getCraftingLockedReason();
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasBlockingProvider(List<ICraftingProvider> providers) {
+        for (ICraftingProvider provider : providers) {
+            if (provider instanceof PatternProviderLogic logic && logic.isBlocking()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String describeOutput(IPatternDetails details) {
@@ -184,9 +232,11 @@ public final class BlockedPatternAnalyzer {
         }
         long available = 0L;
         for (GenericStack candidate : input.getPossibleInputs()) {
-            available += inventory.extract(candidate.what(), required, Actionable.SIMULATE);
-            if (available >= required) {
-                return true;
+            for (AEKey template : inventory.findFuzzyTemplates(candidate.what())) {
+                available += inventory.extract(template, required - available, Actionable.SIMULATE);
+                if (available >= required) {
+                    return true;
+                }
             }
         }
         return false;

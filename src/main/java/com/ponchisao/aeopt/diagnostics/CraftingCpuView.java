@@ -15,7 +15,8 @@ public record CraftingCpuView(ICraftingCPU cpu,
                               String jobOutput,
                               List<WaitedItem> waitingFor,
                               List<ItemAmount> storedItems,
-                              List<BlockedPattern> blockedPatterns) {
+                              List<BlockedPattern> blockedPatterns,
+                              int totalBlockedTasks) {
 
     private static final int MAX_REPORTED_ITEMS = 4;
     private static final String NOTHING = "nothing";
@@ -26,6 +27,18 @@ public record CraftingCpuView(ICraftingCPU cpu,
 
     public boolean isWaitingForMachineOutput() {
         return !waitingFor.isEmpty();
+    }
+
+    public boolean isDeadlocked() {
+        return hasJob
+                && waitingFor.isEmpty()
+                && patternsPushedThisTick == 0
+                && !blockedPatterns.isEmpty()
+                && blockedPatterns.stream().allMatch(BlockedPattern::isMissingIngredient);
+    }
+
+    public boolean hasHiddenBlockedTasks() {
+        return totalBlockedTasks > blockedPatterns.size();
     }
 
     public boolean hasBlockedPatterns() {

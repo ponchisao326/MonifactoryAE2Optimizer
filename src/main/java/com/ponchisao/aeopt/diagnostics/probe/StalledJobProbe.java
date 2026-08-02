@@ -47,12 +47,25 @@ public final class StalledJobProbe implements DiagnosticProbe {
         if (view.isWaitingForMachineOutput()) {
             return "Waiting for " + view.describeWaitedItems() + ". " + describeMissingReturn(view);
         }
+        if (view.isDeadlocked()) {
+            return "DEADLOCKED - every remaining step waits on another step of the same job and nothing is in "
+                    + "flight, so no step can ever start. The intermediates were lost after the job began. "
+                    + "Cancel and re-request. CPU holds: " + view.describeStoredItems() + ". "
+                    + describeBlockedSteps(view);
+        }
         if (view.hasBlockedPatterns()) {
             return "Nothing is pending return. CPU holds: " + view.describeStoredItems()
-                    + ". Blocked on: " + view.describeBlockedPatterns();
+                    + ". " + describeBlockedSteps(view);
         }
         return "Nothing is pending return and no pattern is left to push, "
                 + "so the job is waiting on a final output insertion that never completed.";
+    }
+
+    private String describeBlockedSteps(CraftingCpuView view) {
+        String prefix = view.hasHiddenBlockedTasks()
+                ? "Blocked on " + view.blockedPatterns().size() + " of " + view.totalBlockedTasks() + " steps: "
+                : "Blocked on: ";
+        return prefix + view.describeBlockedPatterns();
     }
 
     private String describeMissingReturn(CraftingCpuView view) {

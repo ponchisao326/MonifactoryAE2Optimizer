@@ -104,7 +104,8 @@ public final class StallRecoveryService {
     }
 
     private boolean isProvablyUnrecoverable(CraftingCpuView view) {
-        return view.hasOutputStrandedInNetwork()
+        return view.isDeadlocked()
+                || view.hasOutputStrandedInNetwork()
                 || view.blockedPatterns().stream().anyMatch(pattern -> pattern.isUnrecoverable());
     }
 
