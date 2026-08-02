@@ -6,16 +6,19 @@ import appeng.api.networking.crafting.CraftingJobStatus;
 import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.stacks.KeyCounter;
 import appeng.crafting.execution.CraftingCpuLogic;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
 import com.ponchisao.aeopt.diagnostics.BlockedPattern;
 import com.ponchisao.aeopt.diagnostics.CraftingCpuView;
+import com.ponchisao.aeopt.diagnostics.ItemAmount;
 import com.ponchisao.aeopt.diagnostics.PatternProviderView;
-import com.ponchisao.aeopt.diagnostics.WaitingItem;
+import com.ponchisao.aeopt.diagnostics.WaitedItem;
 import com.ponchisao.aeopt.mixin.CraftingCpuLogicAccessor;
 import com.ponchisao.aeopt.mixin.PatternProviderLogicAccessor;
+import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -100,26 +103,42 @@ public final class NetworkInspector {
 
     private static CraftingCpuView toCpuView(IGrid grid, ICraftingCPU cpu) {
         CraftingJobStatus status = cpu.getJobStatus();
-        List<WaitingItem> waitingFor = readWaitingItems(cpu);
+        List<WaitedItem> waitingFor = readWaitedItems(grid, cpu);
         int patternsPushed = readPatternsPushed(cpu);
+        boolean potentiallyStalled = isPotentiallyStalled(status != null, patternsPushed);
         return new CraftingCpuView(
                 cpu,
                 readName(cpu),
                 readPosition(cpu),
                 status != null,
-                sumAmounts(waitingFor),
+                sumWaitedAmounts(waitingFor),
                 patternsPushed,
                 cpu.getCoProcessors(),
                 describeJobOutput(status),
                 waitingFor,
-                readBlockedPatterns(grid, cpu, status != null, patternsPushed));
+                readStoredItems(cpu, potentiallyStalled),
+                readBlockedPatterns(grid, cpu, potentiallyStalled));
+    }
+
+    private static List<ItemAmount> readStoredItems(ICraftingCPU cpu, boolean potentiallyStalled) {
+        CraftingCpuLogic logic = readCraftingLogic(cpu);
+        if (!potentiallyStalled || logic == null) {
+            return List.of();
+        }
+        List<ItemAmount> items = new ArrayList<>();
+        for (Object2LongMap.Entry<AEKey> entry : logic.getInventory().list) {
+            if (entry.getLongValue() > 0L) {
+                items.add(new ItemAmount(entry.getKey().getDisplayName().getString(), entry.getLongValue()));
+            }
+        }
+        items.sort(Comparator.comparingLong(ItemAmount::amount).reversed());
+        return List.copyOf(items);
     }
 
     private static List<BlockedPattern> readBlockedPatterns(IGrid grid,
                                                             ICraftingCPU cpu,
-                                                            boolean hasJob,
-                                                            int patternsPushed) {
-        if (!isPotentiallyStalled(hasJob, patternsPushed)) {
+                                                            boolean potentiallyStalled) {
+        if (!potentiallyStalled) {
             return List.of();
         }
         CraftingCpuLogic logic = readCraftingLogic(cpu);
@@ -144,27 +163,28 @@ public final class NetworkInspector {
         return cluster.getBoundsMin().toShortString() + " in " + cluster.getLevel().dimension().location();
     }
 
-    private static List<WaitingItem> readWaitingItems(ICraftingCPU cpu) {
+    private static List<WaitedItem> readWaitedItems(IGrid grid, ICraftingCPU cpu) {
         CraftingCpuLogic logic = readCraftingLogic(cpu);
         if (logic == null) {
             return List.of();
         }
+        KeyCounter networkStock = grid.getStorageService().getCachedInventory();
         Set<AEKey> keys = new HashSet<>();
         logic.getAllWaitingFor(keys);
-        List<WaitingItem> items = new ArrayList<>(keys.size());
+        List<WaitedItem> items = new ArrayList<>(keys.size());
         for (AEKey key : keys) {
             long amount = logic.getWaitingFor(key);
             if (amount > 0L) {
-                items.add(new WaitingItem(key.getDisplayName().getString(), amount));
+                items.add(new WaitedItem(key.getDisplayName().getString(), amount, networkStock.get(key)));
             }
         }
-        items.sort(Comparator.comparingLong(WaitingItem::amount).reversed());
+        items.sort(Comparator.comparingLong(WaitedItem::amount).reversed());
         return List.copyOf(items);
     }
 
-    private static long sumAmounts(List<WaitingItem> items) {
+    private static long sumWaitedAmounts(List<WaitedItem> items) {
         long total = 0L;
-        for (WaitingItem item : items) {
+        for (WaitedItem item : items) {
             total += item.amount();
         }
         return total;

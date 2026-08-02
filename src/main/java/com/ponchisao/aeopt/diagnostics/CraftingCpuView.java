@@ -13,10 +13,12 @@ public record CraftingCpuView(ICraftingCPU cpu,
                               int patternsPushedThisTick,
                               int coProcessors,
                               String jobOutput,
-                              List<WaitingItem> waitingFor,
+                              List<WaitedItem> waitingFor,
+                              List<ItemAmount> storedItems,
                               List<BlockedPattern> blockedPatterns) {
 
     private static final int MAX_REPORTED_ITEMS = 4;
+    private static final String NOTHING = "nothing";
 
     public boolean isIdleWhileHavingWork() {
         return hasJob && patternsPushedThisTick == 0;
@@ -30,10 +32,27 @@ public record CraftingCpuView(ICraftingCPU cpu,
         return !blockedPatterns.isEmpty();
     }
 
+    public boolean hasOutputStrandedInNetwork() {
+        return waitingFor.stream().anyMatch(WaitedItem::isAlreadyInNetwork);
+    }
+
     public String describeWaitedItems() {
+        if (waitingFor.isEmpty()) {
+            return NOTHING;
+        }
         return waitingFor.stream()
                 .limit(MAX_REPORTED_ITEMS)
-                .map(WaitingItem::describe)
+                .map(WaitedItem::describe)
+                .collect(Collectors.joining(", "));
+    }
+
+    public String describeStoredItems() {
+        if (storedItems.isEmpty()) {
+            return NOTHING;
+        }
+        return storedItems.stream()
+                .limit(MAX_REPORTED_ITEMS)
+                .map(ItemAmount::describe)
                 .collect(Collectors.joining(", "));
     }
 

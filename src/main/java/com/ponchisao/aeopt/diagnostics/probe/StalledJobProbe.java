@@ -45,13 +45,22 @@ public final class StalledJobProbe implements DiagnosticProbe {
 
     private String describeCause(CraftingCpuView view) {
         if (view.isWaitingForMachineOutput()) {
-            return "Waiting for " + view.describeWaitedItems()
-                    + ". A machine took the ingredients and never returned that exact output.";
+            return "Waiting for " + view.describeWaitedItems() + ". " + describeMissingReturn(view);
         }
         if (view.hasBlockedPatterns()) {
-            return "Nothing is pending return. Blocked on: " + view.describeBlockedPatterns();
+            return "Nothing is pending return. CPU holds: " + view.describeStoredItems()
+                    + ". Blocked on: " + view.describeBlockedPatterns();
         }
         return "Nothing is pending return and no pattern is left to push, "
                 + "so the job is waiting on a final output insertion that never completed.";
+    }
+
+    private String describeMissingReturn(CraftingCpuView view) {
+        if (view.hasOutputStrandedInNetwork()) {
+            return "DEAD JOB - that output already exists in network storage but was never routed back to this CPU, "
+                    + "so the job can never claim it. Cancel and re-request.";
+        }
+        return "The output does not exist anywhere in the network, so the machine still holds the ingredients "
+                + "or never ran. Check its output hatch, power and whether the recipe actually fits.";
     }
 }

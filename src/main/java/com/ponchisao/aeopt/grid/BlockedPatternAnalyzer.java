@@ -4,6 +4,7 @@ import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.crafting.execution.CraftingCpuLogic;
 import appeng.crafting.execution.ExecutingCraftingJob;
@@ -14,13 +15,15 @@ import com.ponchisao.aeopt.diagnostics.BlockedPattern;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class BlockedPatternAnalyzer {
 
-    private static final int MAX_REPORTED_PATTERNS = 3;
+    private static final int MAX_REPORTED_PATTERNS = 6;
     private static final int MAX_REPORTED_LOCATIONS = 3;
     private static final String UNKNOWN_LOCATION = "unknown";
 
@@ -32,17 +35,52 @@ public final class BlockedPatternAnalyzer {
         if (job == null) {
             return List.of();
         }
+        Map<IPatternDetails, ExecutingCraftingJob.TaskProgress> tasks = job.getTasks();
+        Set<AEKey> producibleKeys = collectProducibleKeys(tasks);
         List<BlockedPattern> blocked = new ArrayList<>();
-        for (Map.Entry<IPatternDetails, ExecutingCraftingJob.TaskProgress> task : job.getTasks().entrySet()) {
+        for (Map.Entry<IPatternDetails, ExecutingCraftingJob.TaskProgress> task : tasks.entrySet()) {
             if (!hasRemainingRuns(task.getValue().value)) {
                 continue;
             }
-            blocked.add(inspectPattern(grid, logic.getInventory(), task.getKey(), task.getValue().value));
+            blocked.add(inspectPattern(grid, logic.getInventory(), producibleKeys,
+                    task.getKey(), task.getValue().value));
             if (blocked.size() >= MAX_REPORTED_PATTERNS) {
                 break;
             }
         }
-        return List.copyOf(blocked);
+        return sortRootCausesFirst(blocked);
+    }
+
+    private static List<BlockedPattern> sortRootCausesFirst(List<BlockedPattern> blocked) {
+        List<BlockedPattern> sorted = new ArrayList<>(blocked);
+        sorted.sort((first, second) -> Integer.compare(rank(second), rank(first)));
+        return List.copyOf(sorted);
+    }
+
+    private static int rank(BlockedPattern pattern) {
+        if (pattern.areAllProvidersStuck()) {
+            return 3;
+        }
+        if (pattern.isUnrecoverable()) {
+            return 2;
+        }
+        if (pattern.hasNoProvider()) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static Set<AEKey> collectProducibleKeys(Map<IPatternDetails, ExecutingCraftingJob.TaskProgress> tasks) {
+        Set<AEKey> keys = new HashSet<>();
+        for (Map.Entry<IPatternDetails, ExecutingCraftingJob.TaskProgress> task : tasks.entrySet()) {
+            if (!hasRemainingRuns(task.getValue().value)) {
+                continue;
+            }
+            for (GenericStack output : task.getKey().getOutputs()) {
+                keys.add(output.what());
+            }
+        }
+        return keys;
     }
 
     private static boolean hasRemainingRuns(long remainingRuns) {
@@ -51,16 +89,19 @@ public final class BlockedPatternAnalyzer {
 
     private static BlockedPattern inspectPattern(IGrid grid,
                                                  ListCraftingInventory inventory,
+                                                 Set<AEKey> producibleKeys,
                                                  IPatternDetails details,
                                                  long remainingRuns) {
         List<ICraftingProvider> providers = collectProviders(grid, details);
+        MissingIngredient missing = findMissingIngredient(inventory, details);
         return new BlockedPattern(
                 describeOutput(details),
                 remainingRuns,
                 providers.size(),
                 countStuckProviders(providers),
                 describeLocations(providers),
-                findMissingIngredient(inventory, details));
+                missing == null ? null : missing.description(),
+                missing != null && producibleKeys.contains(missing.key()));
     }
 
     private static String describeOutput(IPatternDetails details) {
@@ -113,12 +154,18 @@ public final class BlockedPatternAnalyzer {
         return blockEntity.getBlockPos().toShortString();
     }
 
-    private static String findMissingIngredient(ListCraftingInventory inventory, IPatternDetails details) {
+    private static MissingIngredient findMissingIngredient(ListCraftingInventory inventory, IPatternDetails details) {
         for (IPatternDetails.IInput input : details.getInputs()) {
             long required = requiredAmount(input);
-            if (!canSatisfy(inventory, input, required)) {
-                return describeInput(input, required);
+            if (canSatisfy(inventory, input, required)) {
+                continue;
             }
+            GenericStack[] possible = input.getPossibleInputs();
+            if (possible.length == 0) {
+                return new MissingIngredient(null, "an input with no valid candidates");
+            }
+            AEKey key = possible[0].what();
+            return new MissingIngredient(key, required + "x " + key.getDisplayName().getString());
         }
         return null;
     }
@@ -145,11 +192,6 @@ public final class BlockedPatternAnalyzer {
         return false;
     }
 
-    private static String describeInput(IPatternDetails.IInput input, long required) {
-        GenericStack[] possible = input.getPossibleInputs();
-        if (possible.length == 0) {
-            return "an input with no valid candidates";
-        }
-        return required + "x " + possible[0].what().getDisplayName().getString();
+    private record MissingIngredient(AEKey key, String description) {
     }
 }

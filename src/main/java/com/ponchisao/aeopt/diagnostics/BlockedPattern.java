@@ -5,7 +5,8 @@ public record BlockedPattern(String output,
                              int providerCount,
                              int busyProviderCount,
                              String providerLocations,
-                             String missingIngredient) {
+                             String missingIngredient,
+                             boolean missingIngredientProducedByJob) {
 
     public boolean hasNoProvider() {
         return providerCount == 0;
@@ -17,6 +18,10 @@ public record BlockedPattern(String output,
 
     public boolean isMissingIngredient() {
         return missingIngredient != null;
+    }
+
+    public boolean isUnrecoverable() {
+        return isMissingIngredient() && !missingIngredientProducedByJob;
     }
 
     public String describe() {
@@ -31,9 +36,13 @@ public record BlockedPattern(String output,
             return "ROOT CAUSE - every provider is stuck with undelivered stacks at " + providerLocations
                     + ". Clear the machine next to it and this chain resumes";
         }
+        if (isUnrecoverable()) {
+            return "DEAD JOB - missing " + missingIngredient
+                    + ", and no remaining step of this job produces it. It was lost after the job started, "
+                    + "so the job can never finish. Cancel and re-request";
+        }
         if (isMissingIngredient()) {
-            return "CPU is missing " + missingIngredient
-                    + ", produced upstream in this same job, so fixing the root cause below resolves it";
+            return "waiting on " + missingIngredient + ", which an earlier step of this job still has to make";
         }
         return providerCount + " provider(s) at " + providerLocations
                 + " have the ingredients but refused the push (blocking mode, or a locked crafting provider)";
