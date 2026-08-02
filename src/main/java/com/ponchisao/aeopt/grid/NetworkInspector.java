@@ -18,6 +18,7 @@ import com.ponchisao.aeopt.diagnostics.PatternProviderView;
 import com.ponchisao.aeopt.diagnostics.WaitedItem;
 import com.ponchisao.aeopt.mixin.CraftingCpuLogicAccessor;
 import com.ponchisao.aeopt.mixin.PatternProviderLogicAccessor;
+import com.ponchisao.aeopt.tracking.PatternPushTracker;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.Level;
@@ -91,6 +92,7 @@ public final class NetworkInspector {
         GlobalPos position = GlobalPos.of(level.dimension(), blockEntity.getBlockPos());
         List<GenericStack> pendingStacks = accessor.aeopt$getSendList();
         return new PatternProviderView(
+                logic,
                 position,
                 logic.isBusy(),
                 pendingStacks.size(),
@@ -175,11 +177,20 @@ public final class NetworkInspector {
         for (AEKey key : keys) {
             long amount = logic.getWaitingFor(key);
             if (amount > 0L) {
-                items.add(new WaitedItem(key.getDisplayName().getString(), amount, networkStock.get(key)));
+                items.add(toWaitedItem(key, amount, networkStock.get(key)));
             }
         }
         items.sort(Comparator.comparingLong(WaitedItem::amount).reversed());
         return List.copyOf(items);
+    }
+
+    private static WaitedItem toWaitedItem(AEKey key, long amount, long networkStock) {
+        PatternPushTracker.PushRecord record = PatternPushTracker.lastPushOf(key);
+        if (record == null) {
+            return new WaitedItem(key.getDisplayName().getString(), amount, networkStock, null, 0L);
+        }
+        long minutesAgo = (PatternPushTracker.currentTick() - record.tick()) / 1200L;
+        return new WaitedItem(key.getDisplayName().getString(), amount, networkStock, record.location(), minutesAgo);
     }
 
     private static long sumWaitedAmounts(List<WaitedItem> items) {

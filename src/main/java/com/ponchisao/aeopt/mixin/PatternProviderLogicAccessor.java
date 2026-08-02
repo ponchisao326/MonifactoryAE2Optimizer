@@ -16,4 +16,7 @@ public interface PatternProviderLogicAccessor {
 
     @Accessor("sendDirection")
     Direction aeopt$getSendDirection();
+
+    @Accessor("sendDirection")
+    void aeopt$setSendDirection(Direction direction);
 }

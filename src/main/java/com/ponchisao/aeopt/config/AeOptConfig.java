@@ -7,12 +7,17 @@ public final class AeOptConfig {
 
     private static final boolean DEFAULT_DIAGNOSTICS_ENABLED = true;
     private static final boolean DEFAULT_ENERGY_FAIRNESS_ENABLED = false;
+    private static final boolean DEFAULT_STRICT_PATTERN_PUSH = false;
     private static final boolean DEFAULT_WARNING_LOGGING_ENABLED = true;
     private static final int DEFAULT_PROBE_INTERVAL_TICKS = 100;
     private static final int DEFAULT_STALLED_JOB_THRESHOLD_TICKS = 1200;
     private static final int DEFAULT_STUCK_PROVIDER_THRESHOLD_TICKS = 600;
     private static final double DEFAULT_STARVED_ENERGY_RATIO = 0.05D;
     private static final int DEFAULT_WARNING_COOLDOWN_TICKS = 6000;
+    private static final boolean DEFAULT_PROVIDER_RECOVERY_ENABLED = false;
+    private static final boolean DEFAULT_DEAD_JOB_CANCELLATION_ENABLED = false;
+    private static final int DEFAULT_PROVIDER_RECOVERY_THRESHOLD_TICKS = 1200;
+    private static final int DEFAULT_DEAD_JOB_THRESHOLD_TICKS = 6000;
 
     private static final Pair<Values, ForgeConfigSpec> BUILT = new ForgeConfigSpec.Builder().configure(Values::new);
 
@@ -29,6 +34,10 @@ public final class AeOptConfig {
 
     public static boolean isEnergyFairnessEnabled() {
         return isReadable() ? VALUES.energyFairnessEnabled.get() : DEFAULT_ENERGY_FAIRNESS_ENABLED;
+    }
+
+    public static boolean isStrictPatternPushEnabled() {
+        return isReadable() ? VALUES.strictPatternPush.get() : DEFAULT_STRICT_PATTERN_PUSH;
     }
 
     public static boolean isWarningLoggingEnabled() {
@@ -55,6 +64,23 @@ public final class AeOptConfig {
         return isReadable() ? VALUES.warningCooldownTicks.get() : DEFAULT_WARNING_COOLDOWN_TICKS;
     }
 
+    public static boolean isProviderRecoveryEnabled() {
+        return isReadable() ? VALUES.providerRecoveryEnabled.get() : DEFAULT_PROVIDER_RECOVERY_ENABLED;
+    }
+
+    public static boolean isDeadJobCancellationEnabled() {
+        return isReadable() ? VALUES.deadJobCancellationEnabled.get() : DEFAULT_DEAD_JOB_CANCELLATION_ENABLED;
+    }
+
+    public static int providerRecoveryThresholdTicks() {
+        return isReadable() ? VALUES.providerRecoveryThresholdTicks.get()
+                : DEFAULT_PROVIDER_RECOVERY_THRESHOLD_TICKS;
+    }
+
+    public static int deadJobCancellationThresholdTicks() {
+        return isReadable() ? VALUES.deadJobThresholdTicks.get() : DEFAULT_DEAD_JOB_THRESHOLD_TICKS;
+    }
+
     private static boolean isReadable() {
         return SPEC.isLoaded();
     }
@@ -63,12 +89,17 @@ public final class AeOptConfig {
 
         private final ForgeConfigSpec.BooleanValue diagnosticsEnabled;
         private final ForgeConfigSpec.BooleanValue energyFairnessEnabled;
+        private final ForgeConfigSpec.BooleanValue strictPatternPush;
         private final ForgeConfigSpec.BooleanValue warningLoggingEnabled;
         private final ForgeConfigSpec.IntValue probeIntervalTicks;
         private final ForgeConfigSpec.IntValue stalledJobThresholdTicks;
         private final ForgeConfigSpec.IntValue stuckProviderThresholdTicks;
         private final ForgeConfigSpec.DoubleValue starvedEnergyRatio;
         private final ForgeConfigSpec.IntValue warningCooldownTicks;
+        private final ForgeConfigSpec.BooleanValue providerRecoveryEnabled;
+        private final ForgeConfigSpec.BooleanValue deadJobCancellationEnabled;
+        private final ForgeConfigSpec.IntValue providerRecoveryThresholdTicks;
+        private final ForgeConfigSpec.IntValue deadJobThresholdTicks;
 
         private Values(ForgeConfigSpec.Builder builder) {
             builder.push("diagnostics");
@@ -86,8 +117,18 @@ public final class AeOptConfig {
                     DEFAULT_WARNING_COOLDOWN_TICKS, 100, 432000);
             builder.pop();
 
+            builder.push("recovery");
+            providerRecoveryEnabled = builder.define("releaseStuckProviders", DEFAULT_PROVIDER_RECOVERY_ENABLED);
+            providerRecoveryThresholdTicks = builder.defineInRange("releaseStuckProvidersAfterTicks",
+                    DEFAULT_PROVIDER_RECOVERY_THRESHOLD_TICKS, 200, 432000);
+            deadJobCancellationEnabled = builder.define("cancelDeadJobs", DEFAULT_DEAD_JOB_CANCELLATION_ENABLED);
+            deadJobThresholdTicks = builder.defineInRange("cancelDeadJobsAfterTicks",
+                    DEFAULT_DEAD_JOB_THRESHOLD_TICKS, 1200, 432000);
+            builder.pop();
+
             builder.push("fairness");
             energyFairnessEnabled = builder.define("rotateCpuTickOrder", DEFAULT_ENERGY_FAIRNESS_ENABLED);
+            strictPatternPush = builder.define("strictPatternPush", DEFAULT_STRICT_PATTERN_PUSH);
             builder.pop();
         }
     }

@@ -31,6 +31,7 @@ public final class AeOptGridService implements IGridService, IGridServiceProvide
     private final CpuProgressTracker cpuProgress = new CpuProgressTracker();
     private final ProviderStallTracker providerStalls = new ProviderStallTracker();
     private final StarvationCounter starvation = new StarvationCounter();
+    private final StallRecoveryService recovery;
 
     private volatile ScanResult latestResult = ScanResult.empty();
 
@@ -40,6 +41,7 @@ public final class AeOptGridService implements IGridService, IGridServiceProvide
 
     public AeOptGridService(IGrid grid) {
         this.grid = grid;
+        this.recovery = new StallRecoveryService(grid);
     }
 
     @Override
@@ -71,6 +73,7 @@ public final class AeOptGridService implements IGridService, IGridServiceProvide
         latestResult = result;
         starvation.reset();
         logFindingsIfDue(result.findings());
+        recovery.recover(result.sample(), providerStalls, cpuProgress);
     }
 
     private ScanResult evaluate() {

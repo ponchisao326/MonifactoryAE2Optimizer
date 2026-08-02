@@ -1,8 +1,10 @@
 package com.ponchisao.aeopt.diagnostics;
 
+import appeng.helpers.patternprovider.PatternProviderLogic;
 import net.minecraft.core.GlobalPos;
 
-public record PatternProviderView(GlobalPos position,
+public record PatternProviderView(PatternProviderLogic logic,
+                                  GlobalPos position,
                                   boolean busy,
                                   int pendingStackCount,
                                   boolean hasSendDirection) {
