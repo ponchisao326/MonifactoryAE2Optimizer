@@ -8,6 +8,7 @@ public final class AeOptConfig {
     private static final boolean DEFAULT_DIAGNOSTICS_ENABLED = true;
     private static final boolean DEFAULT_ENERGY_FAIRNESS_ENABLED = false;
     private static final boolean DEFAULT_STRICT_PATTERN_PUSH = false;
+    private static final boolean DEFAULT_MACHINE_ROUND_ROBIN = true;
     private static final boolean DEFAULT_WARNING_LOGGING_ENABLED = true;
     private static final int DEFAULT_PROBE_INTERVAL_TICKS = 100;
     private static final int DEFAULT_STALLED_JOB_THRESHOLD_TICKS = 1200;
@@ -38,6 +39,10 @@ public final class AeOptConfig {
 
     public static boolean isStrictPatternPushEnabled() {
         return isReadable() ? VALUES.strictPatternPush.get() : DEFAULT_STRICT_PATTERN_PUSH;
+    }
+
+    public static boolean isMachineRoundRobinEnabled() {
+        return isReadable() ? VALUES.machineRoundRobin.get() : DEFAULT_MACHINE_ROUND_ROBIN;
     }
 
     public static boolean isWarningLoggingEnabled() {
@@ -90,6 +95,7 @@ public final class AeOptConfig {
         private final ForgeConfigSpec.BooleanValue diagnosticsEnabled;
         private final ForgeConfigSpec.BooleanValue energyFairnessEnabled;
         private final ForgeConfigSpec.BooleanValue strictPatternPush;
+        private final ForgeConfigSpec.BooleanValue machineRoundRobin;
         private final ForgeConfigSpec.BooleanValue warningLoggingEnabled;
         private final ForgeConfigSpec.IntValue probeIntervalTicks;
         private final ForgeConfigSpec.IntValue stalledJobThresholdTicks;
@@ -129,6 +135,7 @@ public final class AeOptConfig {
             builder.push("fairness");
             energyFairnessEnabled = builder.define("rotateCpuTickOrder", DEFAULT_ENERGY_FAIRNESS_ENABLED);
             strictPatternPush = builder.define("strictPatternPush", DEFAULT_STRICT_PATTERN_PUSH);
+            machineRoundRobin = builder.define("roundRobinAcrossMachines", DEFAULT_MACHINE_ROUND_ROBIN);
             builder.pop();
         }
     }

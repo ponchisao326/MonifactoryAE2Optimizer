@@ -1,0 +1,17 @@
+{
+  "required": false,
+  "minVersion": "0.8.5",
+  "package": "com.ponchisao.aeopt.compat",
+  "plugin": "com.ponchisao.aeopt.compat.AeOptCompatMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "aeopt.refmap.json",
+  "mixins": [
+    "CraftingPlanSummaryGuardMixin",
+    "RecipeHelperGuardMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

@@ -43,12 +43,8 @@ public final class GridLocator {
     }
 
     private static IGrid firstConnectedGrid(IInWorldGridNodeHost host) {
-        IGrid grid = gridFromSide(host, null);
-        if (grid != null) {
-            return grid;
-        }
         for (Direction side : Direction.values()) {
-            grid = gridFromSide(host, side);
+            IGrid grid = gridFromSide(host, side);
             if (grid != null) {
                 return grid;
             }

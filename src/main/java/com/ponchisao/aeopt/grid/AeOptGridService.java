@@ -37,7 +37,7 @@ public final class AeOptGridService implements IGridService, IGridServiceProvide
 
     private long tick;
     private long lastProbeTick;
-    private long lastWarningTick = Long.MIN_VALUE;
+    private long lastWarningTick = -1L;
 
     public AeOptGridService(IGrid grid) {
         this.grid = grid;
@@ -148,6 +148,6 @@ public final class AeOptGridService implements IGridService, IGridServiceProvide
     }
 
     private boolean hasWarningCooldownElapsed() {
-        return tick - lastWarningTick >= AeOptConfig.warningCooldownTicks();
+        return lastWarningTick < 0L || tick - lastWarningTick >= AeOptConfig.warningCooldownTicks();
     }
 }
