@@ -13,7 +13,8 @@ public record CraftingCpuView(ICraftingCPU cpu,
                               int patternsPushedThisTick,
                               int coProcessors,
                               String jobOutput,
-                              List<WaitingItem> waitingFor) {
+                              List<WaitingItem> waitingFor,
+                              List<BlockedPattern> blockedPatterns) {
 
     private static final int MAX_REPORTED_ITEMS = 4;
 
@@ -25,10 +26,20 @@ public record CraftingCpuView(ICraftingCPU cpu,
         return !waitingFor.isEmpty();
     }
 
+    public boolean hasBlockedPatterns() {
+        return !blockedPatterns.isEmpty();
+    }
+
     public String describeWaitedItems() {
         return waitingFor.stream()
                 .limit(MAX_REPORTED_ITEMS)
                 .map(WaitingItem::describe)
                 .collect(Collectors.joining(", "));
+    }
+
+    public String describeBlockedPatterns() {
+        return blockedPatterns.stream()
+                .map(BlockedPattern::describe)
+                .collect(Collectors.joining(" | "));
     }
 }

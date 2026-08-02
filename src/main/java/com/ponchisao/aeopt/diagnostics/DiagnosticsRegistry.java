@@ -10,9 +10,9 @@ import java.util.List;
 public final class DiagnosticsRegistry {
 
     private static final List<DiagnosticProbe> PROBES = List.of(
+            new StuckSendListProbe(),
             new EnergyStarvationProbe(),
-            new StalledJobProbe(),
-            new StuckSendListProbe());
+            new StalledJobProbe());
 
     private DiagnosticsRegistry() {
     }

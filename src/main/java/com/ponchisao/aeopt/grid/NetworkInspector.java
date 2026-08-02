@@ -10,6 +10,7 @@ import appeng.crafting.execution.CraftingCpuLogic;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
+import com.ponchisao.aeopt.diagnostics.BlockedPattern;
 import com.ponchisao.aeopt.diagnostics.CraftingCpuView;
 import com.ponchisao.aeopt.diagnostics.PatternProviderView;
 import com.ponchisao.aeopt.diagnostics.WaitingItem;
@@ -36,7 +37,7 @@ public final class NetworkInspector {
     public static List<CraftingCpuView> inspectCpus(IGrid grid) {
         List<CraftingCpuView> views = new ArrayList<>();
         for (ICraftingCPU cpu : grid.getCraftingService().getCpus()) {
-            views.add(toCpuView(cpu));
+            views.add(toCpuView(grid, cpu));
         }
         return List.copyOf(views);
     }
@@ -97,19 +98,39 @@ public final class NetworkInspector {
         return blockEntity != null && blockEntity.getLevel() != null;
     }
 
-    private static CraftingCpuView toCpuView(ICraftingCPU cpu) {
+    private static CraftingCpuView toCpuView(IGrid grid, ICraftingCPU cpu) {
         CraftingJobStatus status = cpu.getJobStatus();
         List<WaitingItem> waitingFor = readWaitingItems(cpu);
+        int patternsPushed = readPatternsPushed(cpu);
         return new CraftingCpuView(
                 cpu,
                 readName(cpu),
                 readPosition(cpu),
                 status != null,
                 sumAmounts(waitingFor),
-                readPatternsPushed(cpu),
+                patternsPushed,
                 cpu.getCoProcessors(),
                 describeJobOutput(status),
-                waitingFor);
+                waitingFor,
+                readBlockedPatterns(grid, cpu, status != null, patternsPushed));
+    }
+
+    private static List<BlockedPattern> readBlockedPatterns(IGrid grid,
+                                                            ICraftingCPU cpu,
+                                                            boolean hasJob,
+                                                            int patternsPushed) {
+        if (!isPotentiallyStalled(hasJob, patternsPushed)) {
+            return List.of();
+        }
+        CraftingCpuLogic logic = readCraftingLogic(cpu);
+        if (logic == null) {
+            return List.of();
+        }
+        return BlockedPatternAnalyzer.analyze(grid, logic);
+    }
+
+    private static boolean isPotentiallyStalled(boolean hasJob, int patternsPushed) {
+        return hasJob && patternsPushed == 0;
     }
 
     private static String readName(ICraftingCPU cpu) {

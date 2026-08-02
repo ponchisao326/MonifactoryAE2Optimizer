@@ -48,7 +48,10 @@ public final class StalledJobProbe implements DiagnosticProbe {
             return "Waiting for " + view.describeWaitedItems()
                     + ". A machine took the ingredients and never returned that exact output.";
         }
-        return "Nothing is pending return, so a pattern could not be pushed: "
-                + "no provider accepted it, or an ingredient is missing.";
+        if (view.hasBlockedPatterns()) {
+            return "Nothing is pending return. Blocked on: " + view.describeBlockedPatterns();
+        }
+        return "Nothing is pending return and no pattern is left to push, "
+                + "so the job is waiting on a final output insertion that never completed.";
     }
 }
